@@ -40,3 +40,17 @@ describe('buildIdea', () => {
     expect(buildIdea('  ', new Date())).toBeNull();
   });
 });
+
+describe('parsePolished', () => {
+  it('menerima JSON valid', async () => {
+    const { parsePolished } = await import('./markdown.ts');
+    expect(parsePolished('{"title":" Widget ","body_md":"- satu\\n- dua"}')).toEqual({ title: 'Widget', body_md: '- satu\n- dua' });
+  });
+  it('menolak bentuk salah', async () => {
+    const { parsePolished } = await import('./markdown.ts');
+    expect(parsePolished('bukan json')).toBeNull();
+    expect(parsePolished('{"title":"x"}')).toBeNull();
+    expect(parsePolished('{"title":"","body_md":"x"}')).toBeNull();
+    expect(parsePolished(undefined)).toBeNull();
+  });
+});

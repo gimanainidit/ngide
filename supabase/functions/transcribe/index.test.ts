@@ -66,7 +66,11 @@ beforeEach(async () => {
     insertError: null,
     env: { SUPABASE_URL: 'http://s', SUPABASE_ANON_KEY: 'anon', SUPABASE_SERVICE_ROLE_KEY: 'service', GROQ_API_KEY: 'gsk_test' },
   };
-  globalThis.fetch = vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ text: 'Kita buat widget. Biar cepat rekam.' }) })) as any;
+  globalThis.fetch = vi.fn(async (url: string) =>
+    String(url).includes('chat/completions')
+      ? { ok: false, status: 500 } // default: LLM gagal → fallback mentah
+      : { ok: true, status: 200, json: async () => ({ text: 'Kita buat widget. Biar cepat rekam.' }) },
+  ) as any;
   await load();
 });
 
@@ -92,6 +96,31 @@ describe('transcribe', () => {
       title: 'Ide 26 Okt 22.41',
       body_md: 'Kita buat widget. Biar cepat rekam.',
     });
+  });
+
+  it('LLM berhasil: judul dan body dari hasil rapi, transkrip mentah tetap disimpan', async () => {
+    globalThis.fetch = vi.fn(async (url: string) =>
+      String(url).includes('chat/completions')
+        ? { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: '{"title":"Widget cepat rekam","body_md":"- Buat **widget** rekam cepat"}' } }] }) }
+        : { ok: true, status: 200, json: async () => ({ text: 'eee kita buat widget biar cepat rekam' }) },
+    ) as any;
+    expect((await post()).status).toBe(200);
+    const chat = (globalThis.fetch as any).mock.calls.find((c: any[]) => String(c[0]).includes('chat/completions'));
+    expect(JSON.parse(chat[1].body)).toMatchObject({ model: 'openai/gpt-oss-20b', response_format: { type: 'json_object' } });
+    expect(updatesTo('done')[0].args[0]).toMatchObject({ raw_transcript: 'eee kita buat widget biar cepat rekam' });
+    const insert = calls.find((c) => c.table === 'ideas' && c.method === 'insert')!;
+    expect(insert.args[0]).toMatchObject({ title: 'Widget cepat rekam', body_md: '- Buat **widget** rekam cepat' });
+  });
+
+  it('LLM balas sampah → fallback ke transkrip mentah', async () => {
+    globalThis.fetch = vi.fn(async (url: string) =>
+      String(url).includes('chat/completions')
+        ? { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: 'maaf saya tidak bisa' } }] }) }
+        : { ok: true, status: 200, json: async () => ({ text: 'Kita buat widget. Biar cepat rekam.' }) },
+    ) as any;
+    expect((await post()).status).toBe(200);
+    const insert = calls.find((c) => c.table === 'ideas' && c.method === 'insert')!;
+    expect(insert.args[0]).toMatchObject({ title: 'Ide 26 Okt 22.41', body_md: 'Kita buat widget. Biar cepat rekam.' });
   });
 
   it('idempoten: draft sudah ada → kembalikan tanpa memanggil Groq', async () => {
@@ -123,7 +152,7 @@ describe('transcribe', () => {
   });
 
   it('Groq error → 502 dan rekaman failed (bisa dicoba ulang)', async () => {
-    globalThis.fetch = vi.fn(async () => ({ ok: false, status: 429 })) as any;
+    globalThis.fetch = vi.fn(async () => ({ ok: false, status: 429 })) as any; // transkripsi & chat sama-sama gagal
     const res = await post();
     expect(res.status).toBe(502);
     expect(updatesTo('failed')).toHaveLength(1);

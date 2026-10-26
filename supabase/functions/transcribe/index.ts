@@ -1,14 +1,37 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { buildIdea } from './markdown.ts';
+import { buildIdea, buildPolishMessages, parsePolished } from './markdown.ts';
 
 const GROQ_URL = 'https://api.groq.com/openai/v1/audio/transcriptions';
+const GROQ_CHAT_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const GROQ_MODEL = 'whisper-large-v3-turbo';
+const DEFAULT_CHAT_MODEL = 'openai/gpt-oss-20b';
 const PROMPT =
   'Catatan ide pribadi dalam Bahasa Indonesia, kadang bercampur istilah English seperti app, feature, deadline, user.';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+
+async function polish(transcript: string, groqKey: string) {
+  try {
+    const res = await fetch(GROQ_CHAT_URL, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: Deno.env.get('GROQ_CHAT_MODEL') ?? DEFAULT_CHAT_MODEL,
+        messages: buildPolishMessages(transcript),
+        response_format: { type: 'json_object' },
+        temperature: 0.2,
+      }),
+      signal: AbortSignal.timeout(20_000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return parsePolished(data?.choices?.[0]?.message?.content);
+  } catch {
+    return null;
+  }
+}
 
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
@@ -65,8 +88,11 @@ Deno.serve(async (req) => {
   if (!groq.ok) return fail(`Transkripsi gagal (${groq.status})`, 502);
 
   const { text } = await groq.json();
-  const idea = buildIdea(String(text ?? ''), new Date(rec.created_at));
-  if (!idea) return fail('Tidak ada suara terdeteksi', 422);
+  const raw = buildIdea(String(text ?? ''), new Date(rec.created_at));
+  if (!raw) return fail('Tidak ada suara terdeteksi', 422);
+
+  // Rapikan dengan LLM; kalau gagal apa pun, pakai transkrip mentah supaya ide tidak hilang.
+  const idea = (await polish(String(text), groqKey)) ?? raw;
 
   await admin.from('recordings').update({ status: 'done', raw_transcript: text, error: null }).eq('id', recordingId);
 

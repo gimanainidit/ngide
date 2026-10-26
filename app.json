@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Ngide",
-    "slug": "ngide",
+    "slug": "ngide-gimanainidit",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -35,6 +35,11 @@
           "microphonePermission": "Ngide butuh mikrofon untuk merekam ide Anda."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "932cdc8a-bc19-4222-80d6-7778911bb497"
+      }
+    }
   }
 }
