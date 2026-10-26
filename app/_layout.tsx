@@ -1,4 +1,4 @@
-import { Redirect, Slot, useSegments } from 'expo-router';
+import { Redirect, Stack, useSegments } from 'expo-router';
 import { ActivityIndicator, View } from 'react-native';
 import { useSession } from '../src/lib/useSession';
 
@@ -16,5 +16,9 @@ export default function RootLayout() {
   const inAuth = segments[0] === 'login';
   if (!session && !inAuth) return <Redirect href="/login" />;
   if (session && inAuth) return <Redirect href="/" />;
-  return <Slot />;
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="ide/[id]" options={{ headerShown: true, title: 'Ide' }} />
+    </Stack>
+  );
 }
