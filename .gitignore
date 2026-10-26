@@ -45,3 +45,4 @@ dist/
 *.apk
 .env
 .env.local
+ngide-source.zip
