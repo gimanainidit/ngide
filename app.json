@@ -2,7 +2,7 @@
   "expo": {
     "name": "Ngide",
     "slug": "ngide-gimanainidit",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -11,10 +11,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#f2f5fa"
       },
       "predictiveBackGestureEnabled": false,
       "package": "app.ngide",
@@ -44,7 +42,21 @@
             ]
           }
         }
-      ]
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 180,
+          "resizeMode": "contain",
+          "backgroundColor": "#f2f5fa",
+          "dark": {
+            "image": "./assets/splash-icon.png",
+            "backgroundColor": "#f2f5fa"
+          }
+        }
+      ],
+      "expo-font"
     ],
     "extra": {
       "eas": {
@@ -58,6 +70,9 @@
       "url": "https://u.expo.dev/932cdc8a-bc19-4222-80d6-7778911bb497",
       "checkAutomatically": "ON_LOAD",
       "fallbackToCacheTimeout": 0
+    },
+    "androidStatusBar": {
+      "translucent": true
     }
   }
 }

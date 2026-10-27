@@ -1,5 +1,6 @@
+import { Circle, CircleDot, Download, LogOut, Pause, Play, Trash2, X } from '../src/ui/icons';
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Alert, Pressable, Switch, View } from 'react-native';
 import { deviceModels } from '../src/lib/device';
 import {
   cancelModelDownload,
@@ -13,11 +14,19 @@ import {
 } from '../src/lib/modelManager';
 import type { ModelId, ModelOption } from '../src/lib/models';
 import { updateSettings, useSettings } from '../src/lib/settings';
+import { supabase } from '../src/lib/supabase';
 import { runQueue } from '../src/lib/syncRunner';
+import { makeStyles, useTheme } from '../src/theme/ThemeContext';
+import { Button } from '../src/ui/Button';
+import { Card } from '../src/ui/Card';
+import { Screen } from '../src/ui/Screen';
+import { T } from '../src/ui/Text';
 
 const MB = 1024 * 1024;
 
 export default function Pengaturan() {
+  const s = useStyles();
+  const { c } = useTheme();
   const settings = useSettings();
   const statuses = useModelStatuses();
   const models = deviceModels();
@@ -42,13 +51,15 @@ export default function Pengaturan() {
     ]);
   }
 
-  function chooseModel(id: ModelId) {
-    void updateSettings({ model: id }).then(() => runQueue());
-  }
+  const signOut = () =>
+    Alert.alert('Keluar dari Ngide?', 'Rekaman yang belum tersinkron tetap tersimpan di HP ini.', [
+      { text: 'Batal', style: 'cancel' },
+      { text: 'Keluar', style: 'destructive', onPress: () => void supabase.auth.signOut() },
+    ]);
 
   return (
-    <ScrollView contentContainerStyle={s.content}>
-      <Text style={s.section}>Mode transkripsi</Text>
+    <Screen>
+      <T variant="eyebrow">Mode transkripsi</T>
       <Option
         selected={settings.mode === 'cloud'}
         title="Cloud + cadangan lokal (disarankan)"
@@ -62,17 +73,25 @@ export default function Pengaturan() {
         onPress={() => void updateSettings({ mode: 'local' }).then(() => runQueue())}
       />
 
-      <View style={s.switchRow}>
-        <View style={{ flex: 1 }}>
-          <Text style={s.optionTitle}>Rapikan dengan AI</Text>
-          <Text style={s.optionBody}>
-            Teks transkrip dikirim ke LLM (Groq) untuk dibuatkan judul dan poin. Kalau draft sudah kamu edit, hasilnya hanya jadi saran.
-          </Text>
+      <Card>
+        <View style={s.switchRow}>
+          <View style={{ flex: 1, gap: 4 }}>
+            <T variant="heading">Rapikan dengan AI</T>
+            <T variant="caption">
+              Teks transkrip dikirim ke LLM (Groq) untuk dibuatkan judul dan poin. Kalau draft sudah kamu edit, hasilnya hanya jadi saran.
+            </T>
+          </View>
+          <Switch
+            accessibilityLabel="Rapikan dengan AI"
+            value={settings.polish}
+            onValueChange={(polish) => void updateSettings({ polish })}
+            trackColor={{ true: c.primary, false: c.hairlineStrong }}
+            thumbColor={c.canvas}
+          />
         </View>
-        <Switch value={settings.polish} onValueChange={(polish) => void updateSettings({ polish })} />
-      </View>
+      </Card>
 
-      <Text style={s.section}>Model di HP</Text>
+      <T variant="eyebrow" style={{ marginTop: 8 }}>Model di HP</T>
       {models.map((m) => (
         <ModelRow
           key={m.id}
@@ -80,7 +99,7 @@ export default function Pengaturan() {
           status={statuses[m.id]}
           paused={!!paused[m.id]}
           selected={settings.model === m.id}
-          onSelect={() => chooseModel(m.id)}
+          onSelect={() => void updateSettings({ model: m.id as ModelId }).then(() => runQueue())}
           onDownload={() => startDownload(m)}
           onPause={() => void pauseModelDownload(m.id).then(() => setPaused((p) => ({ ...p, [m.id]: true })))}
           onCancel={() => void cancelModelDownload(m.id).then(() => setPaused((p) => ({ ...p, [m.id]: false })))}
@@ -92,19 +111,29 @@ export default function Pengaturan() {
           }
         />
       ))}
-      <Text style={s.footnote}>Model diunduh dari Hugging Face (whisper.cpp). Rekaman maksimal 2 menit.</Text>
-    </ScrollView>
+      <T variant="caption">Model diunduh dari Hugging Face (whisper.cpp). Rekaman maksimal 2 menit.</T>
+
+      <Button label="Keluar" variant="danger" icon={LogOut} onPress={signOut} style={{ marginTop: 16 }} />
+    </Screen>
   );
 }
 
 function Option(p: { selected: boolean; title: string; body: string; onPress: () => void }) {
+  const s = useStyles();
+  const { c } = useTheme();
+  const Icon = p.selected ? CircleDot : Circle;
   return (
-    <Pressable style={[s.option, p.selected && s.optionSelected]} onPress={p.onPress} accessibilityState={{ selected: p.selected }}>
-      <Text style={s.optionTitle}>
-        {p.selected ? '● ' : '○ '}
-        {p.title}
-      </Text>
-      <Text style={s.optionBody}>{p.body}</Text>
+    <Pressable
+      accessibilityRole="radio"
+      accessibilityState={{ checked: p.selected }}
+      onPress={p.onPress}
+      style={({ pressed }) => [s.option, p.selected && s.optionSelected, pressed && { opacity: 0.85 }]}
+    >
+      <Icon size={22} color={p.selected ? c.primary : c.steel} strokeWidth={2} />
+      <View style={{ flex: 1, gap: 4 }}>
+        <T variant="heading">{p.title}</T>
+        <T variant="caption">{p.body}</T>
+      </View>
     </Pressable>
   );
 }
@@ -120,68 +149,66 @@ function ModelRow(p: {
   onCancel: () => void;
   onDelete: () => void;
 }) {
+  const s = useStyles();
+  const { c } = useTheme();
   const { model, status } = p;
   const size = `±${Math.round(model.approxBytes / MB)} MB`;
   return (
-    <View style={[s.option, p.selected && status.state === 'ready' && s.optionSelected]}>
-      <Text style={s.optionTitle}>
+    <Card style={p.selected && status.state === 'ready' ? s.optionSelected : undefined}>
+      <T variant="heading">
         {model.label} · {size}
-      </Text>
-      <Text style={s.optionBody}>{model.allowed ? model.description : model.reason}</Text>
+      </T>
+      <T variant="caption">{model.allowed ? model.description : model.reason}</T>
       {model.allowed && (
         <View style={s.actions}>
           {status.state === 'ready' && (
             <>
-              <Btn label={p.selected ? 'Dipakai' : 'Pakai model ini'} onPress={p.onSelect} disabled={p.selected} />
-              <Btn label="Hapus" onPress={p.onDelete} danger />
+              <Button label={p.selected ? 'Dipakai' : 'Pakai model ini'} variant={p.selected ? 'secondary' : 'soft'} onPress={p.onSelect} disabled={p.selected} />
+              <Button label="Hapus" variant="danger" icon={Trash2} onPress={p.onDelete} />
             </>
           )}
           {status.state === 'downloading' && (
             <>
-              <Text style={s.progress}>{Math.round(status.progress * 100)}%</Text>
-              <Btn label="Jeda" onPress={p.onPause} />
-              <Btn label="Batal" onPress={p.onCancel} danger />
+              <View style={s.progressTrack} accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: Math.round(status.progress * 100) }}>
+                <View style={[s.progressFill, { width: `${Math.round(status.progress * 100)}%` }]} />
+              </View>
+              <T variant="caption" style={{ color: c.ink }}>{Math.round(status.progress * 100)}%</T>
+              <Button label="Jeda" icon={Pause} onPress={p.onPause} />
+              <Button label="Batal" variant="danger" icon={X} onPress={p.onCancel} />
             </>
           )}
           {(status.state === 'paused' || (status.state === 'none' && p.paused)) && (
             <>
-              <Btn label="Lanjutkan" onPress={p.onDownload} />
-              <Btn label="Batal" onPress={p.onCancel} danger />
+              <Button label="Lanjutkan" variant="soft" icon={Play} onPress={p.onDownload} />
+              <Button label="Batal" variant="danger" icon={X} onPress={p.onCancel} />
             </>
           )}
-          {status.state === 'none' && !p.paused && <Btn label="Unduh" onPress={p.onDownload} />}
+          {status.state === 'none' && !p.paused && <Button label="Unduh" variant="soft" icon={Download} onPress={p.onDownload} />}
           {status.state === 'error' && (
             <>
-              <Text style={s.error}>{status.message}</Text>
-              <Btn label="Coba lagi" onPress={p.onDownload} />
+              <T variant="small" style={{ color: c.dangerInk, width: '100%' }}>{status.message}</T>
+              <Button label="Coba lagi" variant="soft" icon={Download} onPress={p.onDownload} />
             </>
           )}
         </View>
       )}
-    </View>
+    </Card>
   );
 }
 
-function Btn(p: { label: string; onPress: () => void; danger?: boolean; disabled?: boolean }) {
-  return (
-    <Pressable style={[s.btn, p.disabled && { opacity: 0.5 }]} onPress={p.onPress} disabled={p.disabled}>
-      <Text style={[s.btnText, p.danger && { color: '#c00' }]}>{p.label}</Text>
-    </Pressable>
-  );
-}
-
-const s = StyleSheet.create({
-  content: { padding: 16, gap: 12 },
-  section: { fontSize: 13, fontWeight: '700', opacity: 0.7, marginTop: 8 },
-  option: { borderWidth: StyleSheet.hairlineWidth, borderColor: '#999', borderRadius: 12, padding: 14, gap: 6 },
-  optionSelected: { borderColor: '#111', borderWidth: 2 },
-  optionTitle: { fontSize: 15, fontWeight: '700' },
-  optionBody: { fontSize: 13, opacity: 0.75, lineHeight: 19 },
-  switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 4 },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 4 },
-  btn: { backgroundColor: '#eee', paddingVertical: 8, paddingHorizontal: 14, borderRadius: 16 },
-  btnText: { color: '#111', fontWeight: '600' },
-  progress: { fontVariant: ['tabular-nums'], fontWeight: '600' },
-  error: { color: '#c00' },
-  footnote: { fontSize: 12, opacity: 0.55, marginTop: 8 },
-});
+const useStyles = makeStyles(({ c, radius, space }) => ({
+  option: {
+    flexDirection: 'row',
+    gap: space.sm,
+    backgroundColor: c.canvas,
+    borderWidth: 1,
+    borderColor: c.hairline,
+    borderRadius: radius.xl,
+    padding: space.md,
+  },
+  optionSelected: { borderColor: c.primary, borderWidth: 2 },
+  switchRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space.xs, marginTop: 4 },
+  progressTrack: { width: '100%', height: 6, borderRadius: 3, backgroundColor: c.hairline, overflow: 'hidden' },
+  progressFill: { height: 6, backgroundColor: c.link },
+}));

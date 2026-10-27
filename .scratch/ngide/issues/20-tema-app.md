@@ -7,7 +7,7 @@ Token src/theme light/dark ikut sistem, font DM Serif Display/Inter/JetBrains Mo
 19
 
 ## Status
-todo
+done (kode); menunggu tes di HP setelah build APK 1.1.0
 
 ## Acceptance criteria
 - [ ] Unit test kontras pasangan warna wajib

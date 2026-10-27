@@ -1,26 +1,14 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { router } from 'expo-router';
 import { IdeaList } from '../../src/lib/IdeaList';
 import { listTeamIdeas } from '../../src/lib/api';
-import { supabase } from '../../src/lib/supabase';
 
 export default function Tim() {
   return (
     <IdeaList
       load={listTeamIdeas}
       showAuthor
-      empty="Belum ada ide yang dibagikan ke tim."
-      header={
-        <View style={s.header}>
-          <Pressable onPress={() => supabase.auth.signOut()}>
-            <Text style={s.out}>Keluar</Text>
-          </Pressable>
-        </View>
-      }
+      empty="Belum ada ide yang dibagikan. Buka catatanmu lalu tap “Bagikan ke tim”."
+      emptyAction={{ label: 'Buka Catatan Saya', onPress: () => router.navigate('/catatan') }}
     />
   );
 }
-
-const s = StyleSheet.create({
-  header: { alignItems: 'flex-end', marginBottom: 4 },
-  out: { color: '#c00', padding: 4 },
-});

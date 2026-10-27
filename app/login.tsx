@@ -1,8 +1,14 @@
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { View } from 'react-native';
 import { signInWithGoogle } from '../src/lib/auth';
+import { makeStyles } from '../src/theme/ThemeContext';
+import { Button } from '../src/ui/Button';
+import { ErrorText } from '../src/ui/Screen';
+import { ShieldStripe } from '../src/ui/ShieldStripe';
+import { T } from '../src/ui/Text';
 
 export default function Login() {
+  const s = useStyles();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -19,22 +25,25 @@ export default function Login() {
   }
 
   return (
-    <View style={s.container}>
-      <Text style={s.title}>Ngide</Text>
-      <Text style={s.tagline}>Ngomong aja, jadi catatan.</Text>
-      <Pressable style={s.button} onPress={onPress} disabled={busy}>
-        {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.buttonText}>Masuk dengan Google</Text>}
-      </Pressable>
-      {error && <Text style={s.error}>{error}</Text>}
+    <View style={s.root}>
+      <View style={s.body}>
+        <T variant="eyebrow" style={s.onDarkMuted}>Catatan ide tim</T>
+        <T variant="display" style={s.title}>Ngide</T>
+        <T variant="body" style={s.onDarkMuted}>Ngomong aja, jadi catatan.</T>
+        <Button label="Masuk dengan Google" variant="primary" onPress={onPress} busy={busy} style={s.button} />
+        {error && <ErrorText>{error}</ErrorText>}
+        <T variant="caption" style={s.onDarkMuted}>Hanya untuk anggota tim yang terdaftar.</T>
+      </View>
+      <ShieldStripe height={12} />
     </View>
   );
 }
 
-const s = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, gap: 12 },
-  title: { fontSize: 40, fontWeight: '800' },
-  tagline: { fontSize: 16, opacity: 0.7, marginBottom: 24 },
-  button: { backgroundColor: '#111', paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12, minWidth: 240, alignItems: 'center' },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  error: { color: '#c00', textAlign: 'center' },
-});
+const useStyles = makeStyles(({ c, space }) => ({
+  root: { flex: 1, backgroundColor: c.navy950 },
+  body: { flex: 1, justifyContent: 'center', padding: space.xl, gap: space.sm },
+  title: { color: c.onDark, fontSize: 56, lineHeight: 60 },
+  onDarkMuted: { color: c.onDarkMuted },
+  // Di dasar navy, CTA memakai biru perisai agar kontras di kedua tema.
+  button: { backgroundColor: c.shieldBlue, marginTop: space.md, alignSelf: 'stretch' },
+}));

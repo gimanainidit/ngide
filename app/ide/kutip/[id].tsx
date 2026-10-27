@@ -1,12 +1,20 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import { Circle, CircleDot, Quote, Square, SquareCheck } from '../../../src/ui/icons';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { addExcerpts, createPrd, getIdea, listPrds, type Idea, type Prd } from '../../../src/lib/api';
 import { splitParagraphs } from '../../../src/lib/attribution';
+import { makeStyles, useTheme } from '../../../src/theme/ThemeContext';
+import { Button } from '../../../src/ui/Button';
+import { Field } from '../../../src/ui/Field';
+import { CenterState, ErrorText, Screen } from '../../../src/ui/Screen';
+import { T } from '../../../src/ui/Text';
 
 // Pilih paragraf dari ide yang dibagikan, lalu tempel ke PRD sebagai kutipan (snapshot).
 export default function Kutip() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const s = useStyles();
+  const { c } = useTheme();
   const [idea, setIdea] = useState<Idea | null>(null);
   const [prds, setPrds] = useState<Prd[]>([]);
   const [picked, setPicked] = useState<Set<number>>(new Set());
@@ -24,14 +32,8 @@ export default function Kutip() {
       .catch((e) => setError(e instanceof Error ? e.message : 'Gagal memuat'));
   }, [id]);
 
-  if (!idea) return <View style={s.center}>{error ? <Text style={s.error}>{error}</Text> : <ActivityIndicator />}</View>;
-  if (idea.status !== 'shared') {
-    return (
-      <View style={s.center}>
-        <Text>Bagikan ide ke tim dulu sebelum mengutipnya ke PRD.</Text>
-      </View>
-    );
-  }
+  if (!idea) return <CenterState error={error} />;
+  if (idea.status !== 'shared') return <CenterState error="Bagikan ide ke tim dulu sebelum mengutipnya ke PRD." />;
 
   const paragraphs = splitParagraphs(idea.body_md);
   const toggle = (i: number) =>
@@ -60,54 +62,79 @@ export default function Kutip() {
   }
 
   return (
-    <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
-      <Text style={s.section}>1. Pilih paragraf dari “{idea.title}”</Text>
-      {paragraphs.map((p, i) => (
-        <Pressable key={i} style={[s.para, picked.has(i) && s.paraPicked]} onPress={() => toggle(i)} accessibilityState={{ selected: picked.has(i) }}>
-          <Text style={s.check}>{picked.has(i) ? '☑' : '☐'}</Text>
-          <Text style={s.paraText}>{p}</Text>
-        </Pressable>
-      ))}
+    <Screen>
+      <T variant="eyebrow">1. Pilih paragraf dari “{idea.title}”</T>
+      {paragraphs.map((p, i) => {
+        const on = picked.has(i);
+        const Icon = on ? SquareCheck : Square;
+        return (
+          <Pressable
+            key={i}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: on }}
+            onPress={() => toggle(i)}
+            style={({ pressed }) => [s.item, on && s.itemOn, pressed && { opacity: 0.85 }]}
+          >
+            <Icon size={22} color={on ? c.link : c.steel} strokeWidth={2} />
+            <T variant="small" style={{ flex: 1 }}>{p}</T>
+          </Pressable>
+        );
+      })}
 
-      <Text style={s.section}>2. Masukkan ke PRD</Text>
-      {prds.map((p) => (
-        <Pressable key={p.id} style={[s.option, target === p.id && s.optionPicked]} onPress={() => setTarget(p.id)}>
-          <Text style={s.optionText}>
-            {target === p.id ? '● ' : '○ '}
-            {p.title}
-          </Text>
-        </Pressable>
-      ))}
-      <Pressable style={[s.option, target === null && s.optionPicked]} onPress={() => setTarget(null)}>
-        <Text style={s.optionText}>{target === null ? '● ' : '○ '}PRD baru</Text>
-        {target === null && (
-          <TextInput style={s.input} value={newTitle} onChangeText={setNewTitle} placeholder="Nama produk / judul PRD" />
-        )}
+      <T variant="eyebrow" style={{ marginTop: 8 }}>2. Masukkan ke PRD</T>
+      {prds.map((p) => {
+        const on = target === p.id;
+        const Icon = on ? CircleDot : Circle;
+        return (
+          <Pressable
+            key={p.id}
+            accessibilityRole="radio"
+            accessibilityState={{ checked: on }}
+            onPress={() => setTarget(p.id)}
+            style={({ pressed }) => [s.item, on && s.itemOn, pressed && { opacity: 0.85 }]}
+          >
+            <Icon size={22} color={on ? c.primary : c.steel} strokeWidth={2} />
+            <T variant="heading" style={{ flex: 1 }}>{p.title}</T>
+          </Pressable>
+        );
+      })}
+      <Pressable
+        accessibilityRole="radio"
+        accessibilityState={{ checked: target === null }}
+        onPress={() => setTarget(null)}
+        style={[s.item, target === null && s.itemOn, { flexDirection: 'column', alignItems: 'stretch' }]}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          {target === null ? <CircleDot size={22} color={c.primary} strokeWidth={2} /> : <Circle size={22} color={c.steel} strokeWidth={2} />}
+          <T variant="heading">PRD baru</T>
+        </View>
+        {target === null && <Field value={newTitle} onChangeText={setNewTitle} placeholder="Nama produk / judul PRD" />}
       </Pressable>
 
-      {error && <Text style={s.error}>{error}</Text>}
-      <Pressable style={[s.btn, !canSave && { opacity: 0.4 }]} onPress={save} disabled={!canSave}>
-        <Text style={s.btnText}>
-          {busy ? 'Menyimpan…' : picked.size ? `Kutip ${picked.size} paragraf` : 'Pilih paragraf dulu'}
-        </Text>
-      </Pressable>
-    </ScrollView>
+      {error && <ErrorText>{error}</ErrorText>}
+      <Button
+        label={picked.size ? `Kutip ${picked.size} paragraf` : 'Pilih paragraf dulu'}
+        variant="primary"
+        icon={Quote}
+        onPress={save}
+        disabled={!canSave}
+        busy={busy}
+      />
+    </Screen>
   );
 }
 
-const s = StyleSheet.create({
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  content: { padding: 16, gap: 10 },
-  section: { fontSize: 13, fontWeight: '700', opacity: 0.7, marginTop: 8 },
-  para: { flexDirection: 'row', gap: 10, borderWidth: StyleSheet.hairlineWidth, borderColor: '#999', borderRadius: 10, padding: 12 },
-  paraPicked: { borderColor: '#1d4ed8', borderWidth: 1.5, backgroundColor: '#eef6ff' },
-  check: { fontSize: 18 },
-  paraText: { flex: 1, fontSize: 15, lineHeight: 22 },
-  option: { borderWidth: StyleSheet.hairlineWidth, borderColor: '#999', borderRadius: 10, padding: 12, gap: 8 },
-  optionPicked: { borderColor: '#111', borderWidth: 1.5 },
-  optionText: { fontSize: 15, fontWeight: '600' },
-  input: { borderBottomWidth: StyleSheet.hairlineWidth, borderColor: '#999', paddingVertical: 6, fontSize: 15 },
-  btn: { backgroundColor: '#111', paddingVertical: 14, borderRadius: 12, alignItems: 'center', marginTop: 8 },
-  btnText: { color: '#fff', fontWeight: '600', fontSize: 16 },
-  error: { color: '#c00' },
-});
+const useStyles = makeStyles(({ c, radius, space }) => ({
+  item: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    minHeight: 48,
+    padding: space.sm,
+    borderWidth: 1,
+    borderColor: c.hairline,
+    borderRadius: radius.xl,
+    backgroundColor: c.canvas,
+  },
+  itemOn: { borderColor: c.link, borderWidth: 2, backgroundColor: c.accentSoft },
+}));

@@ -1,12 +1,18 @@
 import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { completeSignIn } from '../src/lib/auth';
+import { makeStyles, useTheme } from '../src/theme/ThemeContext';
+import { palettes } from '../src/theme/tokens';
+import { Button } from '../src/ui/Button';
+import { T } from '../src/ui/Text';
 
 // Tujuan deep link ngide://auth-callback?code=... setelah login Google.
 export default function AuthCallback() {
   const url = Linking.useLinkingURL();
+  const s = useStyles();
+  const { c } = useTheme();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -16,28 +22,24 @@ export default function AuthCallback() {
   }, [url]);
 
   return (
-    <View style={s.container}>
+    <View style={s.root}>
       {error ? (
         <>
-          <Text style={s.error}>{error}</Text>
-          <Pressable style={s.button} onPress={() => router.replace('/login')}>
-            <Text style={s.buttonText}>Kembali</Text>
-          </Pressable>
+          <T variant="small" style={{ color: palettes.dark.dangerInk, textAlign: 'center' }} accessibilityLiveRegion="polite">
+            {error}
+          </T>
+          <Button label="Kembali" variant="soft" onPress={() => router.replace('/login')} />
         </>
       ) : (
         <>
-          <ActivityIndicator size="large" />
-          <Text style={s.hint}>Menyelesaikan login…</Text>
+          <ActivityIndicator size="large" color={c.shieldBlue} />
+          <T variant="small" style={{ color: c.onDarkMuted }}>Menyelesaikan login…</T>
         </>
       )}
     </View>
   );
 }
 
-const s = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, gap: 16 },
-  hint: { opacity: 0.7 },
-  error: { color: '#c00', textAlign: 'center' },
-  button: { backgroundColor: '#111', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 12 },
-  buttonText: { color: '#fff', fontWeight: '600' },
-});
+const useStyles = makeStyles(({ c, space }) => ({
+  root: { flex: 1, backgroundColor: c.navy950, justifyContent: 'center', alignItems: 'center', padding: space.xl, gap: space.md },
+}));

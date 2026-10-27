@@ -7,7 +7,7 @@ Adaptive icon: simbol elang (dipotong dari lockup resmi, tanpa diubah) di atas l
 20
 
 ## Status
-todo
+done (kode); menunggu tes di HP setelah build APK 1.1.0
 
 ## Acceptance criteria
 - [ ] Ikon tajam di launcher, tidak terpotong mask

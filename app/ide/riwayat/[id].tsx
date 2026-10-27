@@ -1,13 +1,19 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { View } from 'react-native';
 import { getIdea, listRevisions, type Idea, type Revision } from '../../../src/lib/api';
 import { personName } from '../../../src/lib/attribution';
 import { timeAgo } from '../../../src/lib/format';
+import { useTheme } from '../../../src/theme/ThemeContext';
+import { Badge } from '../../../src/ui/Badge';
+import { Card } from '../../../src/ui/Card';
+import { CenterState, Screen } from '../../../src/ui/Screen';
+import { T } from '../../../src/ui/Text';
 
 // Hanya baca: versi asli pemilik + setiap revisi setelah dibagikan.
 export default function Riwayat() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { c } = useTheme();
   const [idea, setIdea] = useState<Idea | null>(null);
   const [revisions, setRevisions] = useState<Revision[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -21,47 +27,34 @@ export default function Riwayat() {
       .catch((e) => setError(e instanceof Error ? e.message : 'Gagal memuat riwayat'));
   }, [id]);
 
-  if (!idea || !revisions) {
-    return <View style={s.center}>{error ? <Text style={s.error}>{error}</Text> : <ActivityIndicator />}</View>;
-  }
+  if (!idea || !revisions) return <CenterState error={error} />;
 
   return (
-    <ScrollView contentContainerStyle={s.content}>
+    <Screen>
+      {revisions.length === 0 && <T variant="small" style={{ color: c.steel }}>Belum ada yang mengedit ide ini sejak dibagikan.</T>}
       {revisions.map((r, index) => (
-        <View key={r.id} style={s.card}>
-          <Text style={s.meta}>
-            {index === 0 ? 'Versi terbaru · ' : ''}
-            {personName(r.editor)} · {timeAgo(r.created_at)}
-          </Text>
-          <Text style={s.title}>{r.title}</Text>
-          <Text style={s.body} selectable>
-            {r.body_md}
-          </Text>
-        </View>
+        <Card key={r.id}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            {index === 0 && <Badge kind="shared" label="Terbaru" />}
+            <T variant="caption">
+              {personName(r.editor)} · {timeAgo(r.created_at)}
+            </T>
+          </View>
+          <T variant="heading">{r.title}</T>
+          <T variant="small" selectable>{r.body_md}</T>
+        </Card>
       ))}
-      <View style={[s.card, s.original]}>
-        <Text style={s.meta}>
-          Versi asli · {personName(idea.author)}
-          {idea.shared_at ? ` · dibagikan ${timeAgo(idea.shared_at)}` : ''}
-        </Text>
-        <Text style={s.title}>{idea.original_title ?? idea.title}</Text>
-        <Text style={s.body} selectable>
-          {idea.original_md ?? idea.body_md}
-        </Text>
-      </View>
-      {revisions.length === 0 && <Text style={s.empty}>Belum ada yang mengedit ide ini sejak dibagikan.</Text>}
-    </ScrollView>
+      <Card style={{ borderColor: c.primary, borderWidth: 2 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Badge kind="draft" label="Versi asli" />
+          <T variant="caption">
+            {personName(idea.author)}
+            {idea.shared_at ? ` · dibagikan ${timeAgo(idea.shared_at)}` : ''}
+          </T>
+        </View>
+        <T variant="heading">{idea.original_title ?? idea.title}</T>
+        <T variant="small" selectable>{idea.original_md ?? idea.body_md}</T>
+      </Card>
+    </Screen>
   );
 }
-
-const s = StyleSheet.create({
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  content: { padding: 16, gap: 12 },
-  card: { borderWidth: StyleSheet.hairlineWidth, borderColor: '#999', borderRadius: 12, padding: 14, gap: 6 },
-  original: { borderColor: '#111', borderWidth: 1.5 },
-  meta: { fontSize: 12, opacity: 0.65 },
-  title: { fontSize: 16, fontWeight: '700' },
-  body: { fontSize: 15, lineHeight: 22 },
-  empty: { textAlign: 'center', opacity: 0.6 },
-  error: { color: '#c00' },
-});

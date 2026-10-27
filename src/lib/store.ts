@@ -38,5 +38,13 @@ export function createStore<T>(key: string, parse: (raw: string | null) => T) {
     return state;
   }
 
-  return { get, update, useValue };
+  // Callback dipanggil setiap nilai berubah; kembalikan fungsi untuk berhenti.
+  function subscribe(listener: (v: T) => void) {
+    listeners.add(listener);
+    return () => {
+      listeners.delete(listener);
+    };
+  }
+
+  return { get, update, useValue, subscribe };
 }

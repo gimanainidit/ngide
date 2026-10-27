@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chooseAction } from './policy';
+import { chooseAction, describePending } from './policy';
 import { newItem, onFailure, onLocalTranscribed, onSynced } from './queue';
 
 const base = (mode: 'cloud' | 'local') => newItem({ id: 'r', uri: 'u', durationMs: 1000, now: 0, mode, polish: true });
@@ -28,7 +28,6 @@ describe('chooseAction', () => {
   }
 });
 
-import { describePending } from './policy';
 
 describe('describePending', () => {
   const on = { online: true, modelReady: true };

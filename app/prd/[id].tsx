@@ -1,18 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import { Download, ExternalLink, Sparkles, Trash2 } from '../../src/ui/icons';
 import { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Alert, Modal, ScrollView, View } from 'react-native';
 import {
   deleteExcerpt,
   deletePrd,
@@ -26,9 +15,17 @@ import {
 } from '../../src/lib/api';
 import { attributionLine, excerptChanged } from '../../src/lib/attribution';
 import { sharePrdMarkdown } from '../../src/lib/exportPrd';
+import { makeStyles } from '../../src/theme/ThemeContext';
+import { Badge } from '../../src/ui/Badge';
+import { Button } from '../../src/ui/Button';
+import { Field } from '../../src/ui/Field';
+import { CenterState, ErrorText, Screen } from '../../src/ui/Screen';
+import { ShieldStripe } from '../../src/ui/ShieldStripe';
+import { T } from '../../src/ui/Text';
 
 export default function PrdDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const s = useStyles();
   const [prd, setPrd] = useState<Prd | null>(null);
   const [excerpts, setExcerpts] = useState<Excerpt[]>([]);
   const [meId, setMeId] = useState<string | null>(null);
@@ -38,22 +35,28 @@ export default function PrdDetail() {
   const [busy, setBusy] = useState<null | 'save' | 'ai' | 'export'>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    const [me, p, e] = await Promise.all([getMe(), getPrd(id), listExcerpts(id)]);
+  const apply = useCallback(([me, p, e]: [{ id: string }, Prd, Excerpt[]]) => {
     setMeId(me.id);
     setPrd(p);
     setTitle(p.title);
     setBody(p.body_md);
     setExcerpts(e);
-  }, [id]);
+  }, []);
+
+  const load = useCallback(async () => {
+    apply(await Promise.all([getMe(), getPrd(id), listExcerpts(id)]));
+  }, [id, apply]);
 
   useEffect(() => {
-    load().catch((e) => setError(e instanceof Error ? e.message : 'Gagal memuat PRD'));
-  }, [load]);
+    Promise.all([getMe(), getPrd(id), listExcerpts(id)])
+      .then(apply)
+      .catch((e) => setError(e instanceof Error ? e.message : 'Gagal memuat PRD'));
+  }, [id, apply]);
 
-  if (!prd) return <View style={s.center}>{error ? <Text style={s.error}>{error}</Text> : <ActivityIndicator />}</View>;
+  if (!prd) return <CenterState error={error} />;
 
   const dirty = title !== prd.title || body !== prd.body_md;
+  const fields = () => ({ title: title.trim() || prd.title, body_md: body });
 
   async function run(kind: 'save' | 'ai' | 'export', action: () => Promise<void>) {
     setBusy(kind);
@@ -69,14 +72,14 @@ export default function PrdDetail() {
 
   const save = () =>
     run('save', async () => {
-      await savePrd(prd.id, { title: title.trim() || prd.title, body_md: body });
+      await savePrd(prd.id, fields());
       await load();
     });
 
   // AI hanya membuat pratinjau; isi PRD baru berubah setelah user memilih "Pakai".
   const standardize = () =>
     run('ai', async () => {
-      if (dirty) await savePrd(prd.id, { title: title.trim() || prd.title, body_md: body });
+      if (dirty) await savePrd(prd.id, fields());
       setPreview(await standardizePrd(prd.id));
     });
 
@@ -85,10 +88,7 @@ export default function PrdDetail() {
     setPreview(null);
   };
 
-  const exportMd = () =>
-    run('export', async () => {
-      await sharePrdMarkdown({ title: title.trim() || prd.title, body_md: body }, excerpts);
-    });
+  const exportMd = () => run('export', () => sharePrdMarkdown(fields(), excerpts));
 
   const removeExcerpt = (e: Excerpt) =>
     Alert.alert('Hapus kutipan ini dari PRD?', 'Ide sumbernya tidak ikut terhapus.', [
@@ -119,115 +119,62 @@ export default function PrdDetail() {
     ]);
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
-        <TextInput style={s.titleInput} value={title} onChangeText={setTitle} placeholder="Judul PRD" />
-        <TextInput
-          style={s.bodyInput}
-          value={body}
-          onChangeText={setBody}
-          multiline
-          textAlignVertical="top"
-          placeholder="Tulis bebas dalam markdown. Nanti bisa disusun AI jadi PRD standar."
-        />
+    <Screen>
+      <Field label="Judul PRD" value={title} onChangeText={setTitle} big />
+      <Field
+        label="Isi (markdown bebas)"
+        value={body}
+        onChangeText={setBody}
+        multiline
+        placeholder="Tulis bebas. Nanti bisa disusun AI jadi PRD standar."
+      />
 
-        {error && <Text style={s.error}>{error}</Text>}
+      {error && <ErrorText>{error}</ErrorText>}
+      {dirty && <Button label="Simpan" variant="primary" onPress={save} busy={busy === 'save'} disabled={!!busy} />}
+      <Button label="Susun jadi PRD standar (AI)" variant="soft" icon={Sparkles} onPress={standardize} busy={busy === 'ai'} disabled={!!busy} />
+      <Button label="Export .md" icon={Download} onPress={exportMd} busy={busy === 'export'} disabled={!!busy} />
 
-        <View style={s.row}>
-          {dirty && (
-            <Pressable style={[s.btn, s.flex]} onPress={save} disabled={!!busy}>
-              <Text style={s.btnText}>{busy === 'save' ? 'Menyimpan…' : 'Simpan'}</Text>
-            </Pressable>
-          )}
-          <Pressable style={[s.btn, s.btnLight, s.flex]} onPress={standardize} disabled={!!busy}>
-            <Text style={s.btnLightText}>{busy === 'ai' ? 'Menyusun…' : 'Susun jadi PRD standar (AI)'}</Text>
-          </Pressable>
-        </View>
-        <Pressable style={[s.btn, s.btnLight]} onPress={exportMd} disabled={!!busy}>
-          <Text style={s.btnLightText}>{busy === 'export' ? 'Menyiapkan…' : 'Export .md'}</Text>
-        </Pressable>
-
-        <Text style={s.section}>Ide terkait ({excerpts.length})</Text>
-        {excerpts.length === 0 && (
-          <Text style={s.empty}>Belum ada. Buka ide yang dibagikan → “Kutip ke PRD”.</Text>
-        )}
-        {excerpts.map((e) => {
-          const changed = excerptChanged(e.idea_updated_at, e.idea?.updated_at ?? null);
-          return (
-            <View key={e.id} style={s.excerpt}>
-              <Text style={s.quote}>{e.quote_md}</Text>
-              <Text style={s.meta}>
-                {e.idea ? `${e.idea.title} · ${attributionLine(e.idea)}` : 'Ide sumber sudah tidak tersedia'}
-              </Text>
-              {changed && <Text style={s.changed}>Sumber sudah diedit setelah dikutip</Text>}
-              <View style={s.excerptActions}>
-                {e.idea && (
-                  <Pressable onPress={() => router.push(`/ide/${e.idea_id}`)}>
-                    <Text style={s.link}>Buka ide</Text>
-                  </Pressable>
-                )}
-                <Pressable onPress={() => removeExcerpt(e)}>
-                  <Text style={s.removeSmall}>Hapus kutipan</Text>
-                </Pressable>
-              </View>
+      <T variant="eyebrow" style={{ marginTop: 16 }}>Ide terkait ({excerpts.length})</T>
+      {excerpts.length === 0 && <T variant="small">Belum ada. Buka ide yang dibagikan → “Kutip ke PRD”.</T>}
+      {excerpts.map((e) => {
+        const changed = excerptChanged(e.idea_updated_at, e.idea?.updated_at ?? null);
+        return (
+          <View key={e.id} style={s.excerpt}>
+            <T variant="small" style={s.quote}>{e.quote_md}</T>
+            <T variant="caption">{e.idea ? `${e.idea.title} · ${attributionLine(e.idea)}` : 'Ide sumber sudah tidak tersedia'}</T>
+            {changed && <Badge kind="changed" label="Sumber sudah diedit setelah dikutip" />}
+            <View style={s.row}>
+              {e.idea && <Button label="Buka ide" variant="link" icon={ExternalLink} onPress={() => router.push(`/ide/${e.idea_id}`)} />}
+              <Button label="Hapus kutipan" variant="danger" onPress={() => removeExcerpt(e)} />
             </View>
-          );
-        })}
+          </View>
+        );
+      })}
 
-        {prd.created_by === meId && (
-          <Pressable onPress={removePrd} disabled={!!busy}>
-            <Text style={s.remove}>Hapus PRD</Text>
-          </Pressable>
-        )}
-      </ScrollView>
+      {prd.created_by === meId && <Button label="Hapus PRD" variant="danger" icon={Trash2} onPress={removePrd} disabled={!!busy} style={{ marginTop: 16 }} />}
 
       <Modal visible={preview !== null} animationType="slide" onRequestClose={() => setPreview(null)}>
         <View style={s.modal}>
-          <Text style={s.modalTitle}>Pratinjau PRD standar</Text>
-          <Text style={s.meta}>Belum diterapkan. Isi PRD sekarang baru diganti kalau kamu pilih “Pakai”, dan tetap bisa diedit setelahnya.</Text>
-          <ScrollView style={s.previewBox}>
-            <Text style={s.previewText} selectable>
-              {preview}
-            </Text>
+          <T variant="title">Pratinjau PRD standar</T>
+          <T variant="caption">Belum diterapkan. Isi PRD baru diganti kalau kamu pilih “Pakai”, dan tetap bisa diedit setelahnya.</T>
+          <ScrollView style={s.previewBox} contentContainerStyle={{ padding: 12 }}>
+            <T variant="small" selectable>{preview}</T>
           </ScrollView>
           <View style={s.row}>
-            <Pressable style={[s.btn, s.btnLight, s.flex]} onPress={() => setPreview(null)}>
-              <Text style={s.btnLightText}>Batal</Text>
-            </Pressable>
-            <Pressable style={[s.btn, s.flex]} onPress={applyPreview}>
-              <Text style={s.btnText}>Pakai</Text>
-            </Pressable>
+            <Button label="Batal" onPress={() => setPreview(null)} style={{ flex: 1 }} />
+            <Button label="Pakai" variant="primary" onPress={applyPreview} style={{ flex: 1 }} />
           </View>
         </View>
+        <ShieldStripe />
       </Modal>
-    </KeyboardAvoidingView>
+    </Screen>
   );
 }
 
-const s = StyleSheet.create({
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  content: { padding: 16, gap: 12 },
-  titleInput: { fontSize: 22, fontWeight: '700', borderBottomWidth: StyleSheet.hairlineWidth, borderColor: '#999', paddingVertical: 6 },
-  bodyInput: { fontSize: 15, lineHeight: 22, minHeight: 260, borderWidth: StyleSheet.hairlineWidth, borderColor: '#999', borderRadius: 12, padding: 12 },
-  row: { flexDirection: 'row', gap: 10 },
-  flex: { flex: 1 },
-  btn: { backgroundColor: '#111', paddingVertical: 13, paddingHorizontal: 12, borderRadius: 12, alignItems: 'center' },
-  btnText: { color: '#fff', fontWeight: '600' },
-  btnLight: { backgroundColor: '#eee' },
-  btnLightText: { color: '#111', fontWeight: '600', textAlign: 'center' },
-  section: { fontSize: 13, fontWeight: '700', opacity: 0.7, marginTop: 16 },
-  empty: { opacity: 0.6 },
-  excerpt: { borderLeftWidth: 3, borderColor: '#999', paddingLeft: 12, paddingVertical: 4, gap: 4 },
-  quote: { fontSize: 15, lineHeight: 22, fontStyle: 'italic' },
-  meta: { fontSize: 12, opacity: 0.65 },
-  changed: { fontSize: 12, color: '#b45309', fontWeight: '600' },
-  excerptActions: { flexDirection: 'row', gap: 16 },
-  link: { color: '#1d4ed8', fontWeight: '600', fontSize: 13 },
-  removeSmall: { color: '#c00', fontSize: 13 },
-  remove: { color: '#c00', textAlign: 'center', padding: 12, marginTop: 8 },
-  error: { color: '#c00' },
-  modal: { flex: 1, padding: 16, paddingTop: 48, gap: 12 },
-  modalTitle: { fontSize: 20, fontWeight: '700' },
-  previewBox: { flex: 1, borderWidth: StyleSheet.hairlineWidth, borderColor: '#999', borderRadius: 12, padding: 12 },
-  previewText: { fontSize: 14, lineHeight: 21 },
-});
+const useStyles = makeStyles(({ c, radius, space }) => ({
+  row: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: space.sm },
+  excerpt: { borderLeftWidth: 3, borderColor: c.hairlineStrong, paddingLeft: space.sm, paddingVertical: 4, gap: 6 },
+  quote: { fontStyle: 'italic' },
+  modal: { flex: 1, backgroundColor: c.background, padding: space.md, paddingTop: 48, gap: space.sm },
+  previewBox: { flex: 1, borderWidth: 1, borderColor: c.hairline, borderRadius: radius.xl, backgroundColor: c.canvas },
+}));
