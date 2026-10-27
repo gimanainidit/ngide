@@ -7,7 +7,7 @@ Anggota tim mengedit ide shared. Trigger mencatat revisi (append-only) dengan ed
 03
 
 ## Status
-todo
+done (kode) — uji SQL todo HP belum
 
 ## Acceptance criteria
 - [ ] SQL: edit B pada ide shared A membuat 1 revisi dengan editor B

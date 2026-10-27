@@ -23,6 +23,9 @@ export default function RootLayout() {
       <Stack.Screen name="ide/[id]" options={{ headerShown: true, title: 'Ide' }} />
       <Stack.Screen name="draf/[id]" options={{ headerShown: true, title: 'Draft lokal' }} />
       <Stack.Screen name="pengaturan" options={{ headerShown: true, title: 'Pengaturan' }} />
+      <Stack.Screen name="ide/riwayat/[id]" options={{ headerShown: true, title: 'Riwayat' }} />
+      <Stack.Screen name="ide/kutip/[id]" options={{ headerShown: true, title: 'Kutip ke PRD' }} />
+      <Stack.Screen name="prd/[id]" options={{ headerShown: true, title: 'PRD' }} />
     </Stack>
   );
 }

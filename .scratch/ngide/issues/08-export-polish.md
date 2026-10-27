@@ -7,7 +7,7 @@ Export PRD ke file .md (judul, isi, ide terkait + atribusi) via share sheet. Emp
 07
 
 ## Status
-todo
+done (kode) — uji SQL todo HP belum
 
 ## Acceptance criteria
 - [ ] Unit: buildPrdMarkdown, slug nama file

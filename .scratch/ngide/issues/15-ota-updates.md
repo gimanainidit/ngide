@@ -7,7 +7,7 @@ Pasang expo-updates, channel preview di eas.json, runtimeVersion = appVersion. D
 -
 
 ## Status
-todo
+done (kode) — uji SQL todo HP belum
 
 ## Acceptance criteria
 - [ ] Build APK berisi expo-updates

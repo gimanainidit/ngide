@@ -7,7 +7,7 @@ Tab PRD: daftar, buat (judul), editor markdown bebas. Tombol 'Susun jadi PRD sta
 01
 
 ## Status
-todo
+done (kode) — uji SQL todo HP belum
 
 ## Acceptance criteria
 - [ ] SQL: CRUD hanya anggota tim; hapus hanya pembuat

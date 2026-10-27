@@ -15,7 +15,6 @@ import {
 } from 'react-native';
 import {
   acceptSuggestion,
-  authorName,
   deleteDraft,
   dismissSuggestion,
   getAudioUrl,
@@ -23,8 +22,10 @@ import {
   getMe,
   saveIdea,
   shareIdea,
+  EditConflictError,
   type Idea,
 } from '../../src/lib/api';
+import { editedLabel } from '../../src/lib/attribution';
 import { formatDuration } from '../../src/lib/format';
 import { getItem } from '../../src/lib/queueStore';
 
@@ -36,6 +37,7 @@ export default function IdeaDetail() {
   const [body, setBody] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [conflict, setConflict] = useState(false);
 
   const player = useAudioPlayer(null);
   const status = useAudioPlayerStatus(player);
@@ -74,15 +76,18 @@ export default function IdeaDetail() {
 
   const isAuthor = idea.author_id === meId;
   const isDraft = idea.status === 'draft';
-  const editable = isAuthor;
+  // Draft: hanya pembuat. Setelah dibagikan: seluruh tim (riwayat mencatat setiap perubahan).
+  const editable = isAuthor || idea.status === 'shared';
   const dirty = title !== idea.title || body !== idea.body_md;
 
   async function run(action: () => Promise<void>) {
     setBusy(true);
     setError(null);
+    setConflict(false);
     try {
       await action();
     } catch (e) {
+      setConflict(e instanceof EditConflictError);
       setError(e instanceof Error ? e.message : 'Terjadi kesalahan');
     } finally {
       setBusy(false);
@@ -91,8 +96,17 @@ export default function IdeaDetail() {
 
   const save = () =>
     run(async () => {
-      await saveIdea(idea.id, { title: title.trim() || idea.title, body_md: body });
+      await saveIdea(idea.id, { title: title.trim() || idea.title, body_md: body }, idea.updated_at);
       setIdea(await getIdea(idea.id));
+    });
+
+  // Ambil versi terbaru dari server; editan yang belum tersimpan dibuang.
+  const reload = () =>
+    run(async () => {
+      const fresh = await getIdea(idea.id);
+      setIdea(fresh);
+      setTitle(fresh.title);
+      setBody(fresh.body_md);
     });
 
   const share = () =>
@@ -102,7 +116,7 @@ export default function IdeaDetail() {
         text: 'Bagikan',
         onPress: () =>
           run(async () => {
-            if (dirty) await saveIdea(idea.id, { title: title.trim() || idea.title, body_md: body });
+            if (dirty) await saveIdea(idea.id, { title: title.trim() || idea.title, body_md: body }, idea.updated_at);
             await shareIdea(idea.id);
             setIdea(await getIdea(idea.id));
           }),
@@ -142,7 +156,7 @@ export default function IdeaDetail() {
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
         <Text style={s.meta}>
-          {isDraft ? 'Draft privat — hanya kamu yang melihat' : `Dibagikan · ${authorName(idea)}`}
+          {isDraft ? 'Draft privat — hanya kamu yang melihat' : editedLabel(idea as Parameters<typeof editedLabel>[0])}
         </Text>
 
         {idea.suggested_body_md && editable && (
@@ -198,6 +212,22 @@ export default function IdeaDetail() {
         )}
 
         {error && <Text style={s.error}>{error}</Text>}
+        {conflict && (
+          <Pressable style={[s.btn, s.btnLight]} onPress={reload} disabled={busy}>
+            <Text style={s.btnLightText}>Muat ulang versi terbaru</Text>
+          </Pressable>
+        )}
+
+        {idea.status === 'shared' && (
+          <View style={s.links}>
+            <Pressable onPress={() => router.push(`/ide/kutip/${idea.id}`)}>
+              <Text style={s.link}>Kutip ke PRD</Text>
+            </Pressable>
+            <Pressable onPress={() => router.push(`/ide/riwayat/${idea.id}`)}>
+              <Text style={s.link}>Riwayat</Text>
+            </Pressable>
+          </View>
+        )}
 
         {editable && (
           <View style={s.actions}>
@@ -235,6 +265,8 @@ const s = StyleSheet.create({
   playBtn: { backgroundColor: '#eee', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20 },
   playText: { color: '#111', fontWeight: '600' },
   actions: { gap: 12, alignItems: 'stretch', marginTop: 8 },
+  links: { flexDirection: 'row', gap: 20 },
+  link: { color: '#1d4ed8', fontWeight: '600', paddingVertical: 4 },
   btn: { backgroundColor: '#111', paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
   btnText: { color: '#fff', fontWeight: '600', fontSize: 16 },
   btnLight: { backgroundColor: '#eee' },

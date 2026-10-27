@@ -7,7 +7,7 @@ Di detail ide shared: 'Kutip ke PRD' → pilih paragraf → pilih/buat PRD → s
 04, 06
 
 ## Status
-todo
+done (kode) — uji SQL todo HP belum
 
 ## Acceptance criteria
 - [ ] SQL: tidak bisa mengutip draft / ide tim lain
