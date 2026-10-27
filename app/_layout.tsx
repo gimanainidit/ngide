@@ -1,10 +1,12 @@
 import { Redirect, Stack, useSegments } from 'expo-router';
 import { ActivityIndicator, View } from 'react-native';
+import { useSyncRunner } from '../src/lib/syncRunner';
 import { useSession } from '../src/lib/useSession';
 
 export default function RootLayout() {
   const { session, loading } = useSession();
   const segments = useSegments();
+  useSyncRunner(!!session);
 
   if (loading) {
     return (
@@ -19,6 +21,8 @@ export default function RootLayout() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="ide/[id]" options={{ headerShown: true, title: 'Ide' }} />
+      <Stack.Screen name="draf/[id]" options={{ headerShown: true, title: 'Draft lokal' }} />
+      <Stack.Screen name="pengaturan" options={{ headerShown: true, title: 'Pengaturan' }} />
     </Stack>
   );
 }

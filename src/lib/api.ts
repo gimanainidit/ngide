@@ -1,4 +1,3 @@
-import { randomUUID } from 'expo-crypto';
 import { supabase } from './supabase';
 
 export type IdeaStatus = 'draft' | 'shared' | 'archived';
@@ -16,11 +15,13 @@ export type Idea = {
   updated_by: string | null;
   updated_at: string;
   created_at: string;
+  suggested_title: string | null;
+  suggested_body_md: string | null;
   author?: { display_name: string | null; email: string } | null;
 };
 
 const IDEA_COLUMNS =
-  'id,team_id,author_id,recording_id,title,body_md,original_md,status,shared_at,updated_by,updated_at,created_at,author:profiles!ideas_author_id_fkey(display_name,email)';
+  'id,team_id,author_id,recording_id,title,body_md,original_md,status,shared_at,updated_by,updated_at,created_at,suggested_title,suggested_body_md,author:profiles!ideas_author_id_fkey(display_name,email)';
 
 export function authorName(idea: Pick<Idea, 'author'>): string {
   return idea.author?.display_name ?? idea.author?.email ?? 'Anggota';
@@ -90,13 +91,15 @@ export async function deleteDraft(id: string) {
   if (error) throw error;
 }
 
-export async function getAudioUrl(recordingId: string): Promise<string> {
+// Null bila audio tidak pernah diunggah (mode Selalu lokal).
+export async function getAudioUrl(recordingId: string): Promise<string | null> {
   const { data: rec, error } = await supabase
     .from('recordings')
     .select('audio_path')
     .eq('id', recordingId)
     .single();
   if (error) throw error;
+  if (!rec.audio_path) return null;
   const { data, error: signError } = await supabase.storage
     .from('recordings')
     .createSignedUrl(rec.audio_path, 3600);
@@ -104,38 +107,21 @@ export async function getAudioUrl(recordingId: string): Promise<string> {
   return data.signedUrl;
 }
 
-export type PendingRecording = { id: string; uri: string; durationMs: number };
-
-export function newPendingRecording(uri: string, durationMs: number): PendingRecording {
-  return { id: randomUUID(), uri, durationMs };
+export async function acceptSuggestion(idea: Idea) {
+  if (!idea.suggested_body_md) return;
+  const { error } = await supabase
+    .from('ideas')
+    .update({
+      title: idea.suggested_title ?? idea.title,
+      body_md: idea.suggested_body_md,
+      suggested_title: null,
+      suggested_body_md: null,
+    })
+    .eq('id', idea.id);
+  if (error) throw error;
 }
 
-// Idempoten: aman dipanggil ulang dengan PendingRecording yang sama.
-export async function uploadAndTranscribe(p: PendingRecording): Promise<string> {
-  const me = await getMe();
-  if (!me.team) throw new Error('Akun ini belum tergabung di tim');
-
-  const path = `${me.id}/${p.id}.m4a`;
-  const audio = await (await fetch(p.uri)).arrayBuffer();
-  const { error: uploadError } = await supabase.storage
-    .from('recordings')
-    .upload(path, audio, { contentType: 'audio/mp4', upsert: true });
-  if (uploadError) throw uploadError;
-
-  const { error: insertError } = await supabase.from('recordings').insert({
-    id: p.id,
-    team_id: me.team.id,
-    audio_path: path,
-    duration_ms: p.durationMs,
-  });
-  if (insertError && insertError.code !== '23505') throw insertError;
-
-  const { data, error } = await supabase.functions.invoke('transcribe', {
-    body: { recording_id: p.id },
-  });
-  if (error) {
-    const body = await (error as { context?: Response }).context?.json().catch(() => null);
-    throw new Error(body?.error ?? error.message);
-  }
-  return data.idea_id as string;
+export async function dismissSuggestion(id: string) {
+  const { error } = await supabase.from('ideas').update({ suggested_title: null, suggested_body_md: null }).eq('id', id);
+  if (error) throw error;
 }

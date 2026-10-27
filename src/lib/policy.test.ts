@@ -27,3 +27,19 @@ describe('chooseAction', () => {
     it(name, () => expect(chooseAction(item, ctx)).toBe(expected));
   }
 });
+
+import { describePending } from './policy';
+
+describe('describePending', () => {
+  const on = { online: true, modelReady: true };
+  it('label sesuai keadaan', () => {
+    expect(describePending(base('cloud'), on)).toBe('Mentranskrip…');
+    expect(describePending(base('cloud'), { online: false, modelReady: false })).toBe('Menunggu sinyal');
+    expect(describePending(base('local'), { online: true, modelReady: false })).toBe('Menunggu model diunduh');
+    expect(describePending(cloudFailed(), on)).toBe('Gagal, dicoba lagi otomatis');
+    expect(describePending(transcribed('cloud'), { online: false, modelReady: true })).toBe('Draft lokal · menunggu sinyal');
+    expect(describePending(onFailure(base('cloud'), { permanent: true, message: 'Rekaman lebih dari 2 menit' }, 0), on)).toBe(
+      'Gagal: Rekaman lebih dari 2 menit',
+    );
+  });
+});

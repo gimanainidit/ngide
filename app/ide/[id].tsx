@@ -14,8 +14,10 @@ import {
   View,
 } from 'react-native';
 import {
+  acceptSuggestion,
   authorName,
   deleteDraft,
+  dismissSuggestion,
   getAudioUrl,
   getIdea,
   getMe,
@@ -24,6 +26,7 @@ import {
   type Idea,
 } from '../../src/lib/api';
 import { formatDuration } from '../../src/lib/format';
+import { getItem } from '../../src/lib/queueStore';
 
 export default function IdeaDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -47,8 +50,12 @@ export default function IdeaDetail() {
         setTitle(loaded.title);
         setBody(loaded.body_md);
         if (loaded.recording_id && loaded.author_id === me.id) {
-          player.replace(await getAudioUrl(loaded.recording_id));
-          setAudioReady(true);
+          // Mode Selalu lokal: audio tidak ada di server, hanya di HP ini.
+          const source = (await getAudioUrl(loaded.recording_id)) ?? (await getItem(loaded.recording_id))?.uri;
+          if (source) {
+            player.replace(source);
+            setAudioReady(true);
+          }
         }
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Gagal memuat ide');
@@ -102,6 +109,21 @@ export default function IdeaDetail() {
       },
     ]);
 
+  const applySuggestion = () =>
+    run(async () => {
+      await acceptSuggestion(idea);
+      const fresh = await getIdea(idea.id);
+      setIdea(fresh);
+      setTitle(fresh.title);
+      setBody(fresh.body_md);
+    });
+
+  const ignoreSuggestion = () =>
+    run(async () => {
+      await dismissSuggestion(idea.id);
+      setIdea(await getIdea(idea.id));
+    });
+
   const remove = () =>
     Alert.alert('Hapus draft?', 'Draft ini akan dihapus. Rekaman audio tetap tersimpan.', [
       { text: 'Batal', style: 'cancel' },
@@ -122,6 +144,24 @@ export default function IdeaDetail() {
         <Text style={s.meta}>
           {isDraft ? 'Draft privat — hanya kamu yang melihat' : `Dibagikan · ${authorName(idea)}`}
         </Text>
+
+        {idea.suggested_body_md && editable && (
+          <View style={s.suggest}>
+            <Text style={s.suggestTitle}>Versi rapi tersedia</Text>
+            {idea.suggested_title && <Text style={s.suggestHeading}>{idea.suggested_title}</Text>}
+            <Text style={s.suggestBody} numberOfLines={8}>
+              {idea.suggested_body_md}
+            </Text>
+            <View style={s.suggestActions}>
+              <Pressable style={[s.btn, s.suggestBtn]} onPress={applySuggestion} disabled={busy}>
+                <Text style={s.btnText}>Pakai versi rapi</Text>
+              </Pressable>
+              <Pressable onPress={ignoreSuggestion} disabled={busy}>
+                <Text style={s.meta}>Abaikan</Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
 
         {editable ? (
           <TextInput style={s.titleInput} value={title} onChangeText={setTitle} placeholder="Judul" />
@@ -201,4 +241,10 @@ const s = StyleSheet.create({
   btnLightText: { color: '#111', fontWeight: '600', fontSize: 16 },
   remove: { color: '#c00', textAlign: 'center', padding: 8 },
   error: { color: '#c00' },
+  suggest: { backgroundColor: '#eef6ff', borderRadius: 12, padding: 12, gap: 6 },
+  suggestTitle: { fontSize: 13, fontWeight: '700', color: '#1d4ed8' },
+  suggestHeading: { fontSize: 15, fontWeight: '700', color: '#111' },
+  suggestBody: { fontSize: 14, lineHeight: 20, color: '#111' },
+  suggestActions: { flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 4 },
+  suggestBtn: { paddingVertical: 10, paddingHorizontal: 16 },
 });

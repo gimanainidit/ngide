@@ -39,7 +39,9 @@ export function modelInfo(id: ModelId): ModelInfo {
   return MODELS.find((m) => m.id === id)!;
 }
 
-export function availableModels(device: { totalMemory: number | null; abis: string[] | null }) {
+export type ModelOption = ModelInfo & { allowed: boolean; reason?: string };
+
+export function availableModels(device: { totalMemory: number | null; abis: string[] | null }): ModelOption[] {
   const arm64 = device.abis?.includes('arm64-v8a') ?? false;
   return MODELS.map((m) => {
     if (!arm64) return { ...m, allowed: false, reason: 'Hanya untuk HP 64-bit ARM' };

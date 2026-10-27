@@ -15,3 +15,16 @@ export function chooseAction(item: QueueItem, ctx: { online: boolean; modelReady
   if (ctx.modelReady) return 'transcribe_local';
   return ctx.online ? 'sync' : 'wait_online';
 }
+
+// Label status untuk daftar "Belum tersinkron". Pure.
+export function describePending(item: QueueItem, ctx: { online: boolean; modelReady: boolean }): string {
+  if (item.stage === 'failed_permanent') return `Gagal: ${item.lastError ?? 'tidak diketahui'}`;
+  if (item.stage === 'local_transcribed') {
+    return ctx.online ? 'Draft lokal · menyinkronkan' : 'Draft lokal · menunggu sinyal';
+  }
+  if (item.stage !== 'recorded') return '';
+  if (item.mode === 'local' && !ctx.modelReady) return 'Menunggu model diunduh';
+  if (!ctx.online && !ctx.modelReady) return 'Menunggu sinyal';
+  if (item.lastError) return 'Gagal, dicoba lagi otomatis';
+  return 'Mentranskrip…';
+}
