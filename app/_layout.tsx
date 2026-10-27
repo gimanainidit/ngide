@@ -13,7 +13,7 @@ export default function RootLayout() {
       </View>
     );
   }
-  const inAuth = segments[0] === 'login';
+  const inAuth = segments[0] === 'login' || segments[0] === 'auth-callback';
   if (!session && !inAuth) return <Redirect href="/login" />;
   if (session && inAuth) return <Redirect href="/" />;
   return (
