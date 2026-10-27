@@ -46,3 +46,4 @@ dist/
 .env
 .env.local
 ngide-source.zip
+backups/
