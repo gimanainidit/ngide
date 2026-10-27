@@ -7,7 +7,7 @@ Tambah provider STT cadangan di server dan job pg_cron yang merapikan ulang ide 
 10
 
 ## Status
-todo
+done (kode) — uji di HP belum
 
 ## Acceptance criteria
 - [ ] Tes mock: provider 1 gagal → provider 2 dipakai

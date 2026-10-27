@@ -7,7 +7,7 @@ Tombol rekam + timer, upload ke bucket privat, Edge Function Groq, tab Catatan S
 01
 
 ## Status
-todo
+done
 
 ## Acceptance criteria
 - [ ] Rekam 30 dtk menghasilkan draft

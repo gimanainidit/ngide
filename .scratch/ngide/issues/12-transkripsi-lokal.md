@@ -7,7 +7,7 @@ LocalWhisperTranscriber + chooseTranscriber. Offline/Groq gagal (mode cadangan) 
 05, 11
 
 ## Status
-todo
+done (kode) — uji di HP belum
 
 ## Acceptance criteria
 - [ ] Mode pesawat: rekam 2 menit → draft lokal ≤ 30 dtk di HP 8 GB (diukur)

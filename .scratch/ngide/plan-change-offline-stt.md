@@ -75,3 +75,26 @@ Lihat `issues/09`–`14`. Ringkas:
 
 ## Yang belum diverifikasi
 Versi `whisper.rn`, kompatibilitasnya dengan Expo SDK 58 / React Native 0.88, ukuran file model, dan angka RAM di atas berasal dari ingatan, bukan dokumentasi terkini. Tiket 11/12 dimulai dengan mengecek itu.
+
+## Status implementasi (27 Okt 2026)
+Semua tiket 05, 09–14 sudah diimplementasi di kode dan server. **Belum ada satu pun yang diuji di HP sungguhan.**
+
+Terbukti:
+- 115 unit test lulus (antrean, kebijakan, WAV, model, rantai provider, aturan saran, Edge Function dengan penyedia palsu).
+- Aturan database diuji langsung di Supabase (transaksi rollback): durasi > 125 dtk ditolak, rekaman tanpa audio diterima, path audio orang lain ditolak, klien tidak bisa menulis saran tapi bisa menghapusnya, server tidak menghapus jejak editor.
+- Edge Function `transcribe` v4 aktif; job `ngide-polish-pending` aktif tiap 15 menit.
+- Typecheck bersih; bundle Android (Metro) berhasil.
+
+Belum terbukti (butuh build APK + HP):
+- `whisper.rn` 0.7.4 terkompilasi dengan React Native 0.88 / Expo SDK 58 (native, hanya terbukti di build EAS).
+- AudioStream benar-benar merekam di 16 kHz; kalau tidak, app me-resample (dites di unit test).
+- Waktu transkripsi lokal 2 menit ≤ 30 dtk di HP 8 GB, dan WER (benchmark tiket 12 belum dijalankan).
+- Unduhan model dari Hugging Face: lanjut setelah jeda, dan lanjut setelah app ditutup.
+- Job terjadwal memanggil Edge Function lewat pg_net (belum ada data `pending` untuk diuji).
+
+Penyimpangan dari plan:
+- **Checksum SHA-256 model tidak dipatok**: Hugging Face tidak bisa diakses dari lingkungan build ini. Pengganti: ukuran file harus sama dengan Content-Length (atau ≥ 80% ukuran perkiraan), dan model rusak gagal dimuat whisper.cpp. HTTPS tetap melindungi dari file palsu di jalan.
+- **Antrean memakai AsyncStorage**, bukan SQLite: jumlah item kecil (rekaman ≤ 2 menit), cukup dan lebih sederhana.
+- **Format rekaman jadi WAV 16 kHz mono** (bukan AAC): satu file untuk Groq, whisper.cpp, dan putar ulang. 2 menit ≈ 3,8 MB, di bawah batas bucket 5 MB.
+- **Provider STT kedua default = `whisper-large-v3` di Groq** (kunci sama). OpenAI opsional: isi secret `OPENAI_API_KEY` dan `STT_PROVIDERS=groq-turbo,groq-large,openai`.
+- **Job terjadwal** memakai aksi `polish_pending` di function `transcribe` yang sama (bukan function terpisah), dengan secret acak di Vault.

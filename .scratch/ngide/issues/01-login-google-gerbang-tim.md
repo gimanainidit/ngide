@@ -7,7 +7,7 @@ Skeleton Expo, project Supabase, migrasi teams/profiles/team_members/allowlist +
 -
 
 ## Status
-todo
+done
 
 ## Acceptance criteria
 - [ ] Email allowlist masuk dan melihat nama tim

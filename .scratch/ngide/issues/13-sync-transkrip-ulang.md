@@ -7,7 +7,7 @@ Saat online: mode cadangan upload audio + transkrip lokal → server transkrip u
 10, 12
 
 ## Status
-todo
+done (kode) — uji di HP belum
 
 ## Acceptance criteria
 - [ ] Mode Selalu lokal: tidak ada objek audio di storage (pgTAP/cek)

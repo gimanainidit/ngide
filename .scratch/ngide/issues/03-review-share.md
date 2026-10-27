@@ -7,7 +7,7 @@ Edit judul/body draft, tombol Share (original_md terkunci), tab Tim = feed ide s
 02
 
 ## Status
-todo
+done
 
 ## Acceptance criteria
 - [ ] Draft tidak terlihat tim

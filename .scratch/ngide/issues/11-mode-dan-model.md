@@ -7,7 +7,7 @@ Layar pengaturan: Cloud + cadangan lokal (default) / Selalu lokal, toggle perapi
 05
 
 ## Status
-todo
+done (kode) — uji di HP belum
 
 ## Acceptance criteria
 - [ ] Mode tersimpan per HP

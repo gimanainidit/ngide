@@ -7,7 +7,7 @@ Simpan lokal dulu, auto-retry saat online, chip status.
 02
 
 ## Status
-todo
+done (kode) — uji di HP belum
 
 ## Acceptance criteria
 - [ ] Mode pesawat → online → otomatis tertranskrip

@@ -7,7 +7,7 @@ Rekaman dibatasi 2 menit: timer sisa waktu, getar dan auto-stop di 2:00, tetap d
 -
 
 ## Status
-todo
+done (kode) — uji di HP belum
 
 ## Acceptance criteria
 - [ ] Auto-stop tepat di 2:00 dan rekaman tetap jadi draft

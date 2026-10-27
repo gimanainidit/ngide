@@ -7,7 +7,7 @@ Edge Function memakai daftar provider STT dari secret, klasifikasi error (4xx st
 09
 
 ## Status
-todo
+done (kode) — uji di HP belum
 
 ## Acceptance criteria
 - [ ] Tes mock: Groq down + local_transcript ada → ide tetap dibuat, polish pending
