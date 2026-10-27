@@ -1,7 +1,7 @@
-# Export & polish
+# Export .md + polish
 
 ## What to build
-Export PRD ke .md via share sheet, ikon & nama Ngide, empty states.
+Export PRD ke file .md (judul, isi, ide terkait + atribusi) via share sheet. Empty states PRD.
 
 ## Blocked by
 07
@@ -10,4 +10,5 @@ Export PRD ke .md via share sheet, ikon & nama Ngide, empty states.
 todo
 
 ## Acceptance criteria
-- [ ] Unit test PRD exporter
+- [ ] Unit: buildPrdMarkdown, slug nama file
+- [ ] HP: file terbuka benar di aplikasi lain

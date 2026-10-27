@@ -1,7 +1,7 @@
-# PRD dasar
+# PRD dasar + standarisasi AI
 
 ## What to build
-Tab PRD: buat/list/edit PRD.
+Tab PRD: daftar, buat (judul), editor markdown bebas. Tombol 'Susun jadi PRD standar (AI)' → Edge Function prd (aksi standardize) → pratinjau → Pakai/Batal. Bagian: Latar masalah, Nama solusi, Fitur utama, Fitur tambahan, Out of scope.
 
 ## Blocked by
 01
@@ -10,4 +10,7 @@ Tab PRD: buat/list/edit PRD.
 todo
 
 ## Acceptance criteria
-- [ ] CRUD PRD oleh anggota tim saja
+- [ ] SQL: CRUD hanya anggota tim; hapus hanya pembuat
+- [ ] Unit: prompt memuat isi PRD + kutipan; parser menolak hasil tanpa 5 bagian
+- [ ] Unit Edge Function prd: 401/404, LLM gagal → 502, sukses → markdown
+- [ ] HP: hasil AI tampil sebagai pratinjau, tidak menimpa sebelum Pakai
