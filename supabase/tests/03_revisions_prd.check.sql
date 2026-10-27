@@ -26,6 +26,8 @@ begin
     (d1, t1, ua, 'Ide A', 'Isi asli A.'),
     (d3, t1, ua, 'Draft A', 'Masih draft.'),
     (d2, t2, uc, 'Ide C', 'Isi C.');
+  -- Share harus oleh pembuat (trigger ideas_guard), jadi pakai identitas C.
+  perform set_config('request.jwt.claims', json_build_object('sub', uc)::text, true);
   update public.ideas set status = 'shared' where id = d2;
 
   execute 'set local role authenticated';
